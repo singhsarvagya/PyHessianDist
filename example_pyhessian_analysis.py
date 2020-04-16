@@ -23,6 +23,7 @@ from __future__ import print_function
 import json
 import os
 import sys
+import time
 
 import numpy as np
 import argparse
@@ -40,33 +41,22 @@ from pyhessian import hessian
 
 # Settings
 parser = argparse.ArgumentParser(description='PyTorch Example')
-parser.add_argument(
-    '--mini-hessian-batch-size',
-    type=int,
-    default=200,
-    help='input batch size for mini-hessian batch (default: 200)')
-parser.add_argument('--hessian-batch-size',
-                    type=int,
-                    default=200,
-                    help='input batch size for hessian (default: 200)')
-parser.add_argument('--seed',
-                    type=int,
-                    default=1,
-                    help='random seed (default: 1)')
-parser.add_argument('--batch-norm',
-                    action='store_false',
-                    help='do we need batch norm or not')
-parser.add_argument('--residual',
-                    action='store_false',
-                    help='do we need residual connect or not')
+parser.add_argument('--mini-hessian-batch-size', type=int, default=200,
+                    help='input batch size for mini-hessian batch (default: 200)')
+parser.add_argument('--hessian-batch-size', type=int, default=200, help='input batch size for hessian (default: 200)')
+parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
+parser.add_argument('--batch-norm', action='store_false', help='do we need batch norm or not')
+parser.add_argument('--residual', action='store_false', help='do we need residual connect or not')
+parser.add_argument('--cuda', action='store_false', help='do we use gpu or not')
+parser.add_argument('--resume', type=str, default='', help='get the checkpoint')
 
-parser.add_argument('--cuda',
-                    action='store_false',
-                    help='do we use gpu or not')
-parser.add_argument('--resume',
-                    type=str,
-                    default='',
-                    help='get the checkpoint')
+# eigen info
+parser.add_argument('--eigenvalue', dest='eigenvalue', action='store_true')  # default false
+parser.add_argument('--trace', dest='trace', action='store_true')  # default false
+parser.add_argument('--density', dest='density', action='store_true')  # default false
+parser.set_defaults(eigenvalue=False)
+parser.set_defaults(trace=False)
+parser.set_defaults(density=False)
 
 args = parser.parse_args()
 # set random seed to reproduce the work
@@ -134,14 +124,25 @@ else:
                            dataloader=hessian_dataloader,
                            cuda=args.cuda)
 
-print(
-    '********** finish data londing and begin Hessian computation **********')
+print('********** finish data loading and begin Hessian computation **********')
 
-top_eigenvalues, _ = hessian_comp.eigenvalues()
-trace = hessian_comp.trace()
-density_eigen, density_weight = hessian_comp.density()
+if args.eigenvalue:
+    start = time.time()
+    top_eigenvalues, _ = hessian_comp.eigenvalues()
+    end = time.time()
+    print('***Top Eigenvalues: ', top_eigenvalues)
+    print("Time to compute top eigenvalue: %f" % (end - start))
 
-print('\n***Top Eigenvalues: ', top_eigenvalues)
-print('\n***Trace: ', np.mean(trace))
+if args.trace:
+    start = time.time()
+    trace = hessian_comp.trace()
+    end = time.time()
+    print('\n***Trace: ', np.mean(trace))
+    print("Time to compute trace: %f" % (end - start))
 
-get_esd_plot(density_eigen, density_weight)
+if args.density:
+    start = time.time()
+    density_eigen, density_weight = hessian_comp.density()
+    end = time.time()
+    get_esd_plot(density_eigen, density_weight)
+    print("Time to compute density: %f" % (end - start))
