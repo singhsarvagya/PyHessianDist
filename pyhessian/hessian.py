@@ -34,7 +34,7 @@ class hessian():
         iii) the estimated eigenvalue density
     """
 
-    def __init__(self, model, criterion, data=None, dataloader=None, cuda=True):
+    def __init__(self, model, criterion, para=None, data=None, dataloader=None, cuda=True):
         """
         model: the model that needs Hessain information
         criterion: the loss function
@@ -60,6 +60,8 @@ class hessian():
             self.device = 'cuda'
         else:
             self.device = 'cpu'
+        self.device_count = torch.cuda.device_count()
+        self.para = para
 
         # pre-processing for single batch case to simplify the computation.
         if not self.full_dataset:
@@ -72,7 +74,16 @@ class hessian():
             outputs = self.model(self.inputs)
             loss = self.criterion(outputs, self.targets)
             loss.backward(create_graph=True)
-
+        # else:
+        #     # print (self.device_count)
+        #     # devices = [torch.device(d) for d in range(self.device_count)]
+        #     # exit(devices)
+        #     if self.device_count > 1 and self.para == 'batch-parallel':
+        #         print(len(self.data))
+        #         assert len(self.data) % self.device_count == 0
+        #         # partitioning data into number of GPUs available
+        #         self.data_partitions = DataPartitioner(self.data,
+        #                                                [len(self.data) // self.device_count] * self.device_count)
         # this step is used to extract the parameters from the model
         params, gradsH = get_params_grad(self.model)
         self.params = params
@@ -98,15 +109,17 @@ class hessian():
                                      grad_outputs=v,
                                      only_inputs=True,
                                      retain_graph=False)
+            # print (Hv[0].shape)
             THv = [
                 THv1 + Hv1 * float(tmp_num_data) + 0.
                 for THv1, Hv1 in zip(THv, Hv)
             ]
             num_data += float(tmp_num_data)
-
         THv = [THv1 / float(num_data) for THv1 in THv]
         eigenvalue = group_product(THv, v).cpu().item()
         return eigenvalue, THv
+
+
 
     def eigenvalues(self, maxIter=100, tol=1e-3, top_n=1):
         """
@@ -140,7 +153,6 @@ class hessian():
                 else:
                     Hv = hessian_vector_product(self.gradsH, self.params, v)
                     tmp_eigenvalue = group_product(Hv, v).cpu().item()
-
                 v = normalization(Hv)
 
                 if eigenvalue == None:
@@ -151,6 +163,8 @@ class hessian():
                         break
                     else:
                         eigenvalue = tmp_eigenvalue
+                print (eigenvalue)
+
             eigenvalues.append(eigenvalue)
             eigenvectors.append(v)
             computed_dim += 1

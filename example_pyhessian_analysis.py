@@ -24,6 +24,7 @@ import json
 import os
 import sys
 import time
+from collections import OrderedDict
 
 import numpy as np
 import argparse
@@ -38,6 +39,8 @@ from utils import *
 from density_plot import get_esd_plot
 from models.resnet import resnet
 from pyhessian import hessian
+
+
 
 # Settings
 parser = argparse.ArgumentParser(description='PyTorch Example')
@@ -58,6 +61,9 @@ parser.set_defaults(eigenvalue=False)
 parser.set_defaults(trace=False)
 parser.set_defaults(density=False)
 
+# parallelization technique
+parser.add_argument('--para', type=str, default='data-parallel', choices=['data-parallel', 'batch-parallel'])
+
 args = parser.parse_args()
 # set random seed to reproduce the work
 torch.manual_seed(args.seed)
@@ -68,14 +74,14 @@ for arg in vars(args):
     print(arg, getattr(args, arg))
 
 # get dataset
-train_loader, test_loader = getData(name='cifar10_without_dataaugmentation',
+train_loader, test_loader = getData(name='cifar10_without_data_augmentation',
                                     train_bs=args.mini_hessian_batch_size,
                                     test_bs=1)
 ##############
 # Get the hessian data
 ##############
 assert (args.hessian_batch_size % args.mini_hessian_batch_size == 0)
-assert (50000 % args.hessian_batch_size == 0)
+# assert (50000 % args.hessian_batch_size == 0)
 batch_num = args.hessian_batch_size // args.mini_hessian_batch_size
 
 if batch_num == 1:
@@ -96,7 +102,8 @@ model = resnet(num_classes=10,
                batch_norm_not=args.batch_norm)
 if args.cuda:
     model = model.cuda()
-model = torch.nn.DataParallel(model)
+if args.para == 'data-parallel':
+    model = torch.nn.DataParallel(model)
 
 criterion = nn.CrossEntropyLoss()  # label loss
 
@@ -105,7 +112,17 @@ criterion = nn.CrossEntropyLoss()  # label loss
 ###################
 if args.resume == '':
     raise Exception("please choose the trained model")
-model.load_state_dict(torch.load(args.resume))
+
+if args.para == 'data-parallel':
+    model.load_state_dict(torch.load(args.resume))
+else:
+    state_dict = torch.load(args.resume)
+    state_dict_ = OrderedDict()
+    for key in state_dict.keys():
+        new_key = key[7:]
+        state_dict_[new_key] = state_dict[key]
+    model.load_state_dict(state_dict_)
+
 
 ######################################################
 # Begin the computation
@@ -116,11 +133,13 @@ model.eval()
 if batch_num == 1:
     hessian_comp = hessian(model,
                            criterion,
+                           para=args.para,
                            data=hessian_dataloader,
                            cuda=args.cuda)
 else:
     hessian_comp = hessian(model,
                            criterion,
+                           para=args.para,
                            dataloader=hessian_dataloader,
                            cuda=args.cuda)
 

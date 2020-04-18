@@ -61,7 +61,7 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
         test_loader = torch.utils.data.DataLoader(testset,
                                                   batch_size=test_bs,
                                                   shuffle=False)
-    if name == 'cifar10_without_dataaugmentation':
+    if name == 'cifar10_without_data_augmentation':
         transform_train = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.4914, 0.4822, 0.4465),
@@ -91,6 +91,44 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
                                                   shuffle=False)
 
     return train_loader, test_loader
+
+
+""" Dataset partitioning helper """
+# https://pytorch.org/tutorials/intermediate/dist_tuto.html
+
+
+class Partition(object):
+    def __init__(self, data, index):
+        self.data = data
+        self.index = index
+
+    def __len__(self):
+        return len(self.index)
+
+    def __getitem__(self, index):
+        data_idx = self.index[index]
+        return self.data[data_idx]
+
+
+class DataPartitioner(object):
+
+    def __init__(self, data, sizes=[]):
+        self.data = data
+        self.partitions = []
+        data_len = len(data)
+        assert sum(sizes) == data_len, "DataPartitioner: Provided sizes should add to total data"
+
+        indexes = [x for x in range(0, data_len)]
+
+        print (indexes)
+        print (sizes)
+        for part_len in sizes:
+            # part_len = int(frac * data_len)
+            self.partitions.append(indexes[0:part_len])
+            indexes = indexes[part_len:]
+
+    def use(self, partition):
+        return Partition(self.data, self.partitions[partition])
 
 
 def test(model, test_loader, cuda=True):
