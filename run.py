@@ -18,7 +18,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 import torch.distributed as dist
-from torch.multiprocessing import Process
+from torch.multiprocessing import Process, Queue
 
 
 from utils import *
@@ -27,27 +27,6 @@ from models.resnet import resnet
 
 from pyhessian.utils import group_product, group_add, normalization, get_params_grad, hessian_vector_product, orthnormal
 from typing import List, Callable
-
-
-#*
-# @file Different utility functions
-# Copyright (c) Zhewei Yao, Amir Gholami
-# All rights reserved.
-# This file is part of PyHessian library.
-#
-# PyHessian is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# PyHessian is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with PyHessian.  If not, see <http://www.gnu.org/licenses/>.
-#*
 
 
 
@@ -177,7 +156,7 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
     return eigenvalue, THv
 
 
-def eigenvalue(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
+def eigenvalue(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
         max_iter: int = 100, tol: float = 1e-3, top_n: int = 1):
     # group of processes
     group = dist.new_group(list(range(size)))
@@ -226,36 +205,37 @@ def eigenvalue(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
                 else:
                     eigenvalue = tmp_eigenvalue
 
-            # TODO remove this later
-            if rank == 0:
-                print(eigenvalue)
-
         eigenvalues.append(eigenvalue)
-        eigenvectors.append(v)
         computed_dim += 1
 
-    # TODO remove this later
+    # communicating eigenvalues and eigenvectors to parent process
     if rank == 0:
-        print(eigenvalues)
+        queue.put(eigenvalues)
+        queue.put(eigenvectors)
 
 
-def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
+def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
                  fn: Callable, ip: str, backend: str = 'nccl'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = ip
     os.environ['MASTER_PORT'] = '29512'  # random port for now
     dist.init_process_group(backend, rank=rank, world_size=size)
-    fn(rank, size, model, data)
+    fn(rank, size, model, data, queue)
 
 
 if __name__ == "__main__":
     processes = []
     start = time.time()
+    queue = Queue()
     for rank in range(args.device_count):
-        p = Process(target=init_process, args=(rank, args.device_count, model, data_partitions.use(rank),
+        p = Process(target=init_process, args=(rank, args.device_count, model, data_partitions.use(rank), queue,
                                                eigenvalue, args.ip))
         p.start()
         processes.append(p)
+
+    eigenvalues = queue.get()
+
+    print(eigenvalues)
 
     for p in processes:
         p.join()
