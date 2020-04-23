@@ -156,7 +156,7 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
     return eigenvalue, THv
 
 
-def eigenvalue(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
+def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
         max_iter: int = 100, tol: float = 1e-3, top_n: int = 1):
     # group of processes
     group = dist.new_group(list(range(size)))
@@ -211,33 +211,107 @@ def eigenvalue(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
     # communicating eigenvalues and eigenvectors to parent process
     if rank == 0:
         queue.put(eigenvalues)
-        queue.put(eigenvectors)
 
 
 def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
-                 fn: Callable, ip: str, backend: str = 'nccl'):
+                 fn: Callable, ip: str, backend: str = 'gloo'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = ip
-    os.environ['MASTER_PORT'] = '29512'  # random port for now
+    os.environ['MASTER_PORT'] = '29519'  # random port for now
     dist.init_process_group(backend, rank=rank, world_size=size)
     fn(rank, size, model, data, queue)
 
 
-if __name__ == "__main__":
+def eigenvalue(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: str):
     processes = []
-    start = time.time()
     queue = Queue()
     for rank in range(args.device_count):
-        p = Process(target=init_process, args=(rank, args.device_count, model, data_partitions.use(rank), queue,
-                                               eigenvalue, args.ip))
+        p = Process(target=init_process, args=(rank, size, model, data_partitions.use(rank), queue,
+                                               eigenvalue_, ip))
         p.start()
         processes.append(p)
 
     eigenvalues = queue.get()
 
-    print(eigenvalues)
+    for p in processes:
+        p.join()
+
+    return eigenvalues
+
+
+def trace_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
+           max_iter: int = 100, tol: float = 1e-3):
+    # group of processes
+    group = dist.new_group(list(range(size)))
+    # current process device
+    device = torch.device("cuda:{}".format(rank))
+
+    trace_vhv = []
+    trace = 0.
+
+    # moving model to respective GPU
+    model = model.to(device)
+    # setting model to eval mode
+    model.eval()
+    # getting model params and gradients
+    params, gradsH = get_params_grad(model)
+
+    for i in range(max_iter):
+        # generate random vector
+        v = [torch.randint_like(p, high=2, device=device) for p in params]
+
+        # generate Rademacher random variables
+        for v_i in v:
+            v_i[v_i == 0] = -1
+
+        # since we have manually set the seed for cuda
+        # same v should be initialized across all GPUs
+        # but this step is necessary if the seed is
+        # not set
+        for t in v:
+            dist.broadcast(t, src=0, group=group)
+
+        _, Hv = hv_product(rank, size, model, data, v)
+
+        prod = group_product(Hv, v)
+        trace_vhv.append(prod.item())
+
+        if abs(np.mean(trace_vhv) - trace) / (trace + 1e-6) < tol:
+            break
+        else:
+            trace = np.mean(trace_vhv)
+
+    # communicating eigenvalues and eigenvectors to parent process
+    if rank == 0:
+        queue.put(trace)
+
+
+def trace(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: str):
+    processes = []
+    queue = Queue()
+    for rank in range(args.device_count):
+        p = Process(target=init_process, args=(rank, size, model, data_partitions.use(rank), queue,
+                                               trace_, ip))
+        p.start()
+        processes.append(p)
+
+    trace = queue.get()
 
     for p in processes:
         p.join()
+
+    return trace
+
+
+if __name__ == "__main__":
+    # start = time.time()
+    # eigenvalues = eigenvalue(args.device_count, model, data_partitions, args.ip)
+    # print(eigenvalues)
+    # end = time.time()
+    # print("Time to compute top eigenvalue: %f" % (end - start))
+    start = time.time()
+    trace = trace(args.device_count, model, data_partitions, args.ip)
+    # trace(args.device_count, model, data_partitions, args.ip)
+    print (trace)
     end = time.time()
-    print("Time to compute top eigenvalue: %f" % (end - start))
+    print("Time to compute trace: %f" % (end - start))

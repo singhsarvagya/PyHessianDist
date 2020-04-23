@@ -120,8 +120,6 @@ class DataPartitioner(object):
 
         indexes = [x for x in range(0, data_len)]
 
-        print (indexes)
-        print (sizes)
         for part_len in sizes:
             # part_len = int(frac * data_len)
             self.partitions.append(indexes[0:part_len])
