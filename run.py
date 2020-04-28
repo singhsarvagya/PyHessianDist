@@ -283,7 +283,7 @@ def trace_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], que
 
     # communicating eigenvalues and eigenvectors to parent process
     if rank == 0:
-        queue.put(trace)
+        queue.put(np.mean(trace_vhv))
 
 
 def trace(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: str):
@@ -427,13 +427,13 @@ if __name__ == "__main__":
     # print(eigenvalues)
     # end = time.time()
     # print("Time to compute top eigenvalue: %f" % (end - start))
-    # # start = time.time()
-    # # trace = trace(args.device_count, model, data_partitions, args.ip)
-    # # print (trace)
-    # # end = time.time()
-    # # print("Time to compute trace: %f" % (end - start))
     start = time.time()
-    density(args.device_count, model, data_partitions, args.ip)
-    # print (trace)
+    trace = trace(args.device_count, model, data_partitions, args.ip)
+    print (trace)
     end = time.time()
     print("Time to compute trace: %f" % (end - start))
+    # start = time.time()
+    # density(args.device_count, model, data_partitions, args.ip)
+    # # print (trace)
+    # end = time.time()
+    # print("Time to compute trace: %f" % (end - start))
