@@ -112,7 +112,7 @@ class Partition(object):
 
 class DataPartitioner(object):
 
-    def __init__(self, data, sizes=[]):
+    def __init__(self, data, sizes=None):
         self.data = data
         self.partitions = []
         data_len = len(data)

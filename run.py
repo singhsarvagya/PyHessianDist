@@ -217,7 +217,7 @@ def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor
                  fn: Callable, ip: str, backend: str = 'gloo'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = ip
-    os.environ['MASTER_PORT'] = '29519'  # random port for now
+    os.environ['MASTER_PORT'] = '29520'  # random port for now
     dist.init_process_group(backend, rank=rank, world_size=size)
     fn(rank, size, model, data, queue)
 
@@ -303,15 +303,137 @@ def trace(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: str
     return trace
 
 
+def density_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue, iter=100, n_v=1):
+    """
+    compute estimated eigenvalue density using stochastic lanczos algorithm (SLQ)
+    iter: number of iterations used to compute trace
+    n_v: number of SLQ runs
+    """
+    # group of processes
+    group = dist.new_group(list(range(size)))
+    # current process device
+    device = torch.device("cuda:{}".format(rank))
+
+    eigen_list_full = []
+    weight_list_full = []
+
+    # moving model to respective GPU
+    model = model.to(device)
+    # setting model to eval mode
+    model.eval()
+    # getting model params and gradients
+    params, gradsH = get_params_grad(model)
+
+    print("Nv: %d", n_v)
+    for k in range(n_v):
+        print("k %d", k)
+        v = [torch.randint_like(p, high=2, device=device) for p in params]
+
+        # generate Rademacher random variables
+        for v_i in v:
+            v_i[v_i == 0] = -1
+        v = normalization(v)
+
+        # since we have manually set the seed for cuda
+        # same v should be initialized across all GPUs
+        # but this step is necessary if the seed is
+        # not set
+        for t in v:
+            dist.broadcast(t, src=0, group=group)
+
+        # standard lanczos algorithm initlization
+        v_list = [v]
+        w_list = []
+        alpha_list = []
+        beta_list = []
+        ############### Lanczos
+        for i in range(iter):
+
+            if i == 0:
+                _, w_prime = hv_product(rank, size, model, data, v)
+                alpha = group_product(w_prime, v)
+                alpha_list.append(alpha.cpu().item())
+                w = group_add(w_prime, v, alpha=-alpha)
+                w_list.append(w)
+            else:
+                beta = torch.sqrt(group_product(w, w))
+                beta_list.append(beta.cpu().item())
+                if beta_list[-1] != 0.:
+                    # We should re-orth it
+                    v = orthnormal(w, v_list)
+                    v_list.append(v)
+                else:
+                    # generate a new vector
+                    w = [torch.randn(p.size()).to(device) for p in params]
+                    for t in w:
+                        dist.broadcast(t, src=0, group=group)
+                    v = orthnormal(w, v_list)
+                    v_list.append(v)
+                _, w_prime = hv_product(rank, size, model, data, v)
+                alpha = group_product(w_prime, v)
+                alpha_list.append(alpha.cpu().item())
+                w_tmp = group_add(w_prime, v, alpha=-alpha)
+                w = group_add(w_tmp, v_list[-2], alpha=-beta)
+            print("I: %d" % i)
+            # torch.cuda.synchronize(device)
+    if rank == 0:
+        print ("here")
+        T = torch.zeros(iter, iter).to(device).contiguous()
+        print ("here1")
+        print (len(alpha_list))
+        for i in range(len(alpha_list)):
+            # print("heren")
+            T[i, i] = alpha_list[i]
+            if i < len(alpha_list) - 1:
+                T[i + 1, i] = beta_list[i]
+                T[i, i + 1] = beta_list[i]
+        print ("here3")
+        a_, b_ = torch.eig(T, eigenvectors=True)
+        print ("here2")
+
+
+        eigen_list = a_[:, 0]
+        weight_list = b_[0, :]**2
+        eigen_list_full.append(list(eigen_list.cpu().numpy()))
+        weight_list_full.append(list(weight_list.cpu().numpy()))
+
+
+        print(eigen_list_full)
+        print(weight_list_full)
+    else:
+        print("shitfuckbitch")
+    # return eigen_list_full, weight_list_full
+
+
+def density(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: str):
+    processes = []
+    queue = Queue()
+    for rank in range(args.device_count):
+        p = Process(target=init_process, args=(rank, size, model, data_partitions.use(rank), queue,
+                                               density_, ip))
+        p.start()
+        processes.append(p)
+
+    # trace = queue.get()
+
+    for p in processes:
+        p.join()
+
+    # return trace
+
 if __name__ == "__main__":
     # start = time.time()
     # eigenvalues = eigenvalue(args.device_count, model, data_partitions, args.ip)
     # print(eigenvalues)
     # end = time.time()
     # print("Time to compute top eigenvalue: %f" % (end - start))
+    # # start = time.time()
+    # # trace = trace(args.device_count, model, data_partitions, args.ip)
+    # # print (trace)
+    # # end = time.time()
+    # # print("Time to compute trace: %f" % (end - start))
     start = time.time()
-    trace = trace(args.device_count, model, data_partitions, args.ip)
-    # trace(args.device_count, model, data_partitions, args.ip)
-    print (trace)
+    density(args.device_count, model, data_partitions, args.ip)
+    # print (trace)
     end = time.time()
     print("Time to compute trace: %f" % (end - start))
