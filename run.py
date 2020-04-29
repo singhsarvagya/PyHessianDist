@@ -3,20 +3,11 @@
 
 from __future__ import print_function
 
-import json
 import os
-import sys
 import time
 from collections import OrderedDict
 
-import numpy as np
 import argparse
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.autograd import Variable
 import torch.distributed as dist
 from torch.multiprocessing import Process, Queue
 
@@ -27,7 +18,6 @@ from models.resnet import resnet
 
 from pyhessian.utils import group_product, group_add, normalization, get_params_grad, hessian_vector_product, orthnormal
 from typing import List, Callable
-
 
 
 # Settings
@@ -119,7 +109,7 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
     # count the number of datum points in the dataloader
     num_data = 0
     # to accumulate the hessian vector product
-    THv = []
+    temp_hv = []
 
     for inputs, targets in data:
         model.zero_grad()
@@ -128,36 +118,36 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
         loss = criterion(outputs, targets.to(device))
         loss.backward(create_graph=True)
         params, gradsH = get_params_grad(model)
-        model.zero_grad()
+        # model.zero_grad()
         Hv = torch.autograd.grad(gradsH,
                                  params,
                                  grad_outputs=v,
                                  only_inputs=True,
                                  retain_graph=False)
         # accumulating the eigenvector
-        if len(THv) == 0:
-            THv = [
+        if len(temp_hv) == 0:
+            temp_hv = [
                 Hv1.contiguous() * float(tmp_num_data) + 0.
                 for Hv1 in Hv
             ]
         else:
-            THv = [
-                THv1 + Hv1 * float(tmp_num_data) + 0.
-                for THv1, Hv1 in zip(THv, Hv)
+            temp_hv = [
+                temp_hv1 + Hv1 * float(tmp_num_data) + 0.
+                for temp_hv1, Hv1 in zip(temp_hv, Hv)
             ]
         num_data += float(tmp_num_data)
 
-    # reducing the THv after every i
-    for t in range(len(THv)):
-        dist.all_reduce(THv[t], op=dist.ReduceOp.SUM, group=group)
+    # reducing the temp_hv after every i
+    for t in range(len(temp_hv)):
+        dist.all_reduce(temp_hv[t], op=dist.ReduceOp.SUM, group=group)
 
-    THv = [THv1 / float(size * num_data) for THv1 in THv]
-    eigenvalue = group_product(THv, v).cpu().item()
-    return eigenvalue, THv
+    temp_hv = [temp_hv1 / float(size * num_data) for temp_hv1 in temp_hv]
+    eigenvalue = group_product(temp_hv, v).cpu().item()
+    return eigenvalue, temp_hv
 
 
-def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
-        max_iter: int = 100, tol: float = 1e-3, top_n: int = 1):
+def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
+                queue: Queue, max_iter: int = 100, tol: float = 1e-3, top_n: int = 1):
     # group of processes
     group = dist.new_group(list(range(size)))
     # current process device
@@ -212,14 +202,6 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
     if rank == 0:
         queue.put(eigenvalues)
 
-
-def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
-                 fn: Callable, ip: str, backend: str = 'gloo'):
-    """ Initialize the distributed environment. """
-    os.environ['MASTER_ADDR'] = ip
-    os.environ['MASTER_PORT'] = '29520'  # random port for now
-    dist.init_process_group(backend, rank=rank, world_size=size)
-    fn(rank, size, model, data, queue)
 
 
 def eigenvalue(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: str):
@@ -346,9 +328,9 @@ def density_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], q
         w_list = []
         alpha_list = []
         beta_list = []
-        ############### Lanczos
-        for i in range(iter):
 
+        for i in range(iter):
+            print(i)
             if i == 0:
                 _, w_prime = hv_product(rank, size, model, data, v)
                 alpha = group_product(w_prime, v)
@@ -374,35 +356,29 @@ def density_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], q
                 alpha_list.append(alpha.cpu().item())
                 w_tmp = group_add(w_prime, v, alpha=-alpha)
                 w = group_add(w_tmp, v_list[-2], alpha=-beta)
-            print("I: %d" % i)
-            # torch.cuda.synchronize(device)
+            torch.cuda.synchronize(device)
+
     if rank == 0:
-        print ("here")
         T = torch.zeros(iter, iter).to(device).contiguous()
-        print ("here1")
-        print (len(alpha_list))
         for i in range(len(alpha_list)):
-            # print("heren")
+            print("heren")
             T[i, i] = alpha_list[i]
             if i < len(alpha_list) - 1:
                 T[i + 1, i] = beta_list[i]
                 T[i, i + 1] = beta_list[i]
-        print ("here3")
+        print("here3")
         a_, b_ = torch.eig(T, eigenvectors=True)
-        print ("here2")
-
-
+        print("here4")
         eigen_list = a_[:, 0]
         weight_list = b_[0, :]**2
+
         eigen_list_full.append(list(eigen_list.cpu().numpy()))
         weight_list_full.append(list(weight_list.cpu().numpy()))
-
-
-        print(eigen_list_full)
-        print(weight_list_full)
-    else:
-        print("shitfuckbitch")
-    # return eigen_list_full, weight_list_full
+        print("here5")
+        queue.put(eigen_list_full)
+        queue.put(weight_list_full)
+        # print(eigen_list_full)
+        # print(weight_list_full)
 
 
 def density(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: str):
@@ -414,12 +390,23 @@ def density(size: int, model: nn.Module, data_partitions: DataPartitioner, ip: s
         p.start()
         processes.append(p)
 
-    # trace = queue.get()
+    eigen_list_full = queue.get()
+    weight_list_full = queue.get()
 
     for p in processes:
         p.join()
 
-    # return trace
+    return eigen_list_full, weight_list_full
+
+
+def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], queue: Queue,
+                 fn: Callable, ip: str, backend: str = 'gloo'):
+    """ Initialize the distributed environment. """
+    os.environ['MASTER_ADDR'] = ip
+    os.environ['MASTER_PORT'] = '29520'  # random port for now
+    dist.init_process_group(backend, rank=rank, world_size=size)
+    fn(rank, size, model, data, queue)
+
 
 if __name__ == "__main__":
     # start = time.time()
@@ -427,13 +414,14 @@ if __name__ == "__main__":
     # print(eigenvalues)
     # end = time.time()
     # print("Time to compute top eigenvalue: %f" % (end - start))
-    start = time.time()
-    trace = trace(args.device_count, model, data_partitions, args.ip)
-    print (trace)
-    end = time.time()
-    print("Time to compute trace: %f" % (end - start))
     # start = time.time()
-    # density(args.device_count, model, data_partitions, args.ip)
-    # # print (trace)
+    # trace = trace(args.device_count, model, data_partitions, args.ip)
+    # print (trace)
     # end = time.time()
     # print("Time to compute trace: %f" % (end - start))
+    start = time.time()
+    eigen_list, weight_list = density(args.device_count, model, data_partitions, args.ip)
+    print (eigen_list)
+    print (weight_list)
+    end = time.time()
+    print("Time to compute trace: %f" % (end - start))
