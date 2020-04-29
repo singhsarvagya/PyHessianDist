@@ -19,9 +19,11 @@
 #*
 
 import torch
-import math
-from torch.autograd import Variable
-import numpy as np
+import torch.nn as nn
+import torch.distributed as dist
+from typing import List, Callable
+from torch.multiprocessing import Queue
+import os
 
 
 def group_product(xs, ys):
@@ -95,3 +97,47 @@ def orthnormal(w, v_list):
     for v in v_list:
         w = group_add(w, v, alpha=-group_product(w, v))
     return normalization(w)
+
+
+""" Dataset partitioning helper """
+# https://pytorch.org/tutorials/intermediate/dist_tuto.html
+
+
+class Partition(object):
+    def __init__(self, data, index):
+        self.data = data
+        self.index = index
+
+    def __len__(self):
+        return len(self.index)
+
+    def __getitem__(self, index):
+        data_idx = self.index[index]
+        return self.data[data_idx]
+
+
+class DataPartitioner(object):
+
+    def __init__(self, data, sizes=None):
+        self.data = data
+        self.partitions = []
+        data_len = len(data)
+        assert sum(sizes) == data_len, "DataPartitioner: Provided sizes should add to total data"
+
+        indexes = [x for x in range(0, data_len)]
+
+        for part_len in sizes:
+            self.partitions.append(indexes[0:part_len])
+            indexes = indexes[part_len:]
+
+    def use(self, partition):
+        return Partition(self.data, self.partitions[partition])
+
+
+def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
+                 criterion: Callable, queue: Queue, fn: Callable, ip: str, backend: str = 'gloo'):
+    """ Initialize the distributed environment. """
+    os.environ['MASTER_ADDR'] = ip
+    os.environ['MASTER_PORT'] = '29520'  # random port for now
+    dist.init_process_group(backend, rank=rank, world_size=size)
+    fn(rank, size, model, data, criterion, queue)
