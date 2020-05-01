@@ -62,10 +62,18 @@ for i, (inputs, labels) in enumerate(train_loader):
         break
 
 # dividing dataset into partitions
-assert len(hessian_dataloader) % args.device_count == 0
+if len(hessian_dataloader) % args.device_count == 0:
+    size = [len(hessian_dataloader) // args.device_count] * args.device_count
+else:
+    size = [len(hessian_dataloader) // args.device_count] * args.device_count
+    for i in range(0, args.device_count):
+        if i < len(hessian_dataloader) % args.device_count:
+            size[i] += 1
+print (size)
+# exit(0)
 # partitioning data into number of GPUs available
-data_partitions = DataPartitioner(hessian_dataloader,
-                                  [len(hessian_dataloader) // args.device_count] * args.device_count)
+
+data_partitions = DataPartitioner(hessian_dataloader, size)
 
 # get model
 model = resnet(num_classes=10,
