@@ -76,7 +76,7 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
 
 
 def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
-                criterion: Callable, queue: Queue, max_iter: int = 100, tol: float = 1e-3, top_n: int = 1):
+                criterion: Callable, queue: Queue, max_iter: int = 10, tol: float = 1e-3, top_n: int = 1):
     # group of processes
     group = dist.new_group(list(range(size)))
     # current process device
@@ -118,11 +118,12 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
             if eigenvalue is None:
                 eigenvalue = tmp_eigenvalue
             else:
-                if abs(eigenvalue - tmp_eigenvalue) / (abs(eigenvalue) +
-                                                       1e-6) < tol:
-                    break
-                else:
-                    eigenvalue = tmp_eigenvalue
+#                 if abs(eigenvalue - tmp_eigenvalue) / (abs(eigenvalue) +
+#                                                        1e-6) < tol:
+# #                     break
+#                 else:
+                eigenvalue = tmp_eigenvalue
+#         print (i)
 
         eigenvalues.append(eigenvalue)
         computed_dim += 1
