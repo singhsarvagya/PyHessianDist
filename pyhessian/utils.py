@@ -135,7 +135,7 @@ class DataPartitioner(object):
 
 
 def init_process(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
-                 criterion: Callable, queue: Queue, fn: Callable, ip: str, backend: str = 'gloo'):
+                 criterion: Callable, queue: Queue, fn: Callable, ip: str, backend: str = 'nccl'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = ip
     os.environ['MASTER_PORT'] = '29520'  # random port for now
