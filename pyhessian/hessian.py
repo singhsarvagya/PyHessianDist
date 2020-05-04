@@ -19,6 +19,7 @@
 #*
 
 import torch
+import time 
 import numpy as np
 from typing import List, Callable
 import torch.nn as nn
@@ -43,9 +44,31 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
     for inputs, targets in data:
         model.zero_grad()
         tmp_num_data = inputs.size(0)
+            
+        if rank == 0: 
+            for_start = time.time()
+
         outputs = model(inputs.to(device))
         loss = criterion(outputs, targets.to(device))
+        
+        if rank == 0:
+            for_end = time.time()
+            print("Time to forward Hv: %f" % (for_end - for_start))    
+
+        if rank == 0: 
+            back_start = time.time()
+
         loss.backward(create_graph=True)
+        
+        
+        if rank == 0:
+            back_end = time.time()
+            print("Time to back Hv: %f" % (back_end - back_start))    
+        
+        
+        if rank == 0: 
+            back2_start = time.time()
+        
         params, gradsH = get_params_grad(model)
         # model.zero_grad()
         Hv = torch.autograd.grad(gradsH,
@@ -53,6 +76,11 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
                                  grad_outputs=v,
                                  only_inputs=True,
                                  retain_graph=False)
+        
+        if rank == 0:
+            back2_end = time.time()
+            print("Time to back2 Hv: %f" % (back2_end - back2_start))   
+            
         # accumulating the eigenvector
         if len(temp_hv) == 0:
             temp_hv = [
@@ -67,16 +95,24 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
         num_data += float(tmp_num_data)
 
     # reducing the temp_hv after every i
+    if rank == 0: 
+        reduce_start = time.time()
+        
     for t in range(len(temp_hv)):
         dist.all_reduce(temp_hv[t], op=dist.ReduceOp.SUM, group=group)
-
+    
+    if rank == 0:
+        reduce_end = time.time()
+        print("Time to reduce Hv: %f" % (reduce_end - reduce_start))        
+        
     temp_hv = [temp_hv1 / float(size * num_data) for temp_hv1 in temp_hv]
     eigenvalue = group_product(temp_hv, v).cpu().item()
+
     return eigenvalue, temp_hv
 
 
 def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
-                criterion: Callable, queue: Queue, max_iter: int = 10, tol: float = 1e-3, top_n: int = 1):
+                criterion: Callable, queue: Queue, max_iter: int = 100, tol: float = 1e-3, top_n: int = 1):
     # group of processes
     group = dist.new_group(list(range(size)))
     # current process device
@@ -106,10 +142,20 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
         # same v should be initialized across all GPUs
         # but this step is necessary if the seed is
         # not set
+        if rank == 0: 
+            bcast_start = time.time()
         for t in v:
             dist.broadcast(t, src=0, group=group)
-
+    
+        if rank == 0:
+            bcast_end = time.time()
+            print("Time to bcast Hv: %f" % (bcast_end - bcast_start))  
+            
+            
+        if rank == 0: 
+            total_start = time.time()
         for i in range(max_iter):
+            print (i)
             v = orthnormal(v, eigenvectors)
 
             tmp_eigenvalue, Hv = hv_product(rank, size, model, data, criterion, v)
@@ -118,12 +164,15 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
             if eigenvalue is None:
                 eigenvalue = tmp_eigenvalue
             else:
-#                 if abs(eigenvalue - tmp_eigenvalue) / (abs(eigenvalue) +
-#                                                        1e-6) < tol:
-# #                     break
-#                 else:
-                eigenvalue = tmp_eigenvalue
-#         print (i)
+                if abs(eigenvalue - tmp_eigenvalue) / (abs(eigenvalue) +
+                                                       1e-6) < tol:
+                    break
+                else:
+                    eigenvalue = tmp_eigenvalue
+    
+        if rank == 0:
+            total_end = time.time()
+            print("Time to total Hv: %f" % (total_end - total_start))  
 
         eigenvalues.append(eigenvalue)
         computed_dim += 1
@@ -160,7 +209,10 @@ def trace_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], cri
 
     trace_vhv = []
     trace = 0.
-
+            
+    if rank == 0: 
+        total_start = time.time()
+        
     # moving model to respective GPU
     model = model.to(device)
     # setting model to eval mode
@@ -169,6 +221,7 @@ def trace_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], cri
     params, gradsH = get_params_grad(model)
 
     for i in range(max_iter):
+        print (i)
         # generate random vector
         v = [torch.randint_like(p, high=2, device=device) for p in params]
 
@@ -180,9 +233,18 @@ def trace_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], cri
         # same v should be initialized across all GPUs
         # but this step is necessary if the seed is
         # not set
+        
+        if rank == 0: 
+            bcast_start = time.time()
+            
         for t in v:
             dist.broadcast(t, src=0, group=group)
 
+
+        if rank == 0:
+            bcast_end = time.time()
+            print("Time to bcast Hv: %f" % (bcast_end - bcast_start))  
+            
         _, Hv = hv_product(rank, size, model, data, criterion, v)
 
         prod = group_product(Hv, v)
@@ -193,6 +255,9 @@ def trace_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor], cri
         else:
             trace = np.mean(trace_vhv)
 
+    if rank == 0:
+        total_end = time.time()
+        print("Time to total Hv: %f" % (total_end - total_start))  
     # communicating eigenvalues and eigenvectors to parent process
     if rank == 0:
         queue.put(np.mean(trace_vhv))
@@ -259,6 +324,7 @@ def density_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
         beta_list = []
 
         for i in range(iter):
+            print (i)
             if i == 0:
                 _, w_prime = hv_product(rank, size, model, data, criterion, v)
                 alpha = group_product(w_prime, v)
@@ -294,6 +360,7 @@ def density_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
                 T[i + 1, i] = beta_list[i]
                 T[i, i + 1] = beta_list[i]
         a_, b_ = torch.eig(T, eigenvectors=True)
+        print ("Done cal eig of T")
         eigen_list = a_[:, 0]
         weight_list = b_[0, :]**2
 

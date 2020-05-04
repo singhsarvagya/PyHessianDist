@@ -1,0 +1,394 @@
+mini_hessian_batch_size 200
+hessian_batch_size 8000
+seed 1
+batch_norm True
+residual True
+cuda True
+resume checkpoints/net.pkl
+eigenvalue False
+trace True
+density False
+ip 172.17.0.3
+device_count 6
+Files already downloaded and verified
+[7, 7, 7, 7, 6, 6]
+0
+Time to bcast Hv: 3.799257
+Time to forward Hv: 0.417085
+Time to back Hv: 0.015625
+Time to back2 Hv: 0.812412
+Time to forward Hv: 0.040569
+Time to back Hv: 0.008106
+Time to back2 Hv: 0.788763
+Time to forward Hv: 0.038517
+Time to back Hv: 0.008126
+Time to back2 Hv: 0.784242
+Time to forward Hv: 0.038639
+Time to back Hv: 0.007907
+Time to back2 Hv: 0.786965
+Time to forward Hv: 0.038385
+Time to back Hv: 0.007874
+Time to back2 Hv: 0.784103
+Time to forward Hv: 0.038578
+Time to back Hv: 0.008074
+Time to back2 Hv: 0.785248
+Time to forward Hv: 0.038810
+Time to back Hv: 0.007866
+Time to back2 Hv: 0.784643
+Time to reduce Hv: 0.298470
+1
+Time to bcast Hv: 0.017614
+Time to forward Hv: 0.008573
+Time to back Hv: 0.007779
+Time to back2 Hv: 0.783349
+Time to forward Hv: 0.040647
+Time to back Hv: 0.007744
+Time to back2 Hv: 0.788305
+Time to forward Hv: 0.038574
+Time to back Hv: 0.007788
+Time to back2 Hv: 0.786979
+Time to forward Hv: 0.038729
+Time to back Hv: 0.007997
+Time to back2 Hv: 0.785117
+Time to forward Hv: 0.038738
+Time to back Hv: 0.007866
+Time to back2 Hv: 0.788148
+Time to forward Hv: 0.038841
+Time to back Hv: 0.008057
+Time to back2 Hv: 0.786510
+Time to forward Hv: 0.038922
+Time to back Hv: 0.007610
+Time to back2 Hv: 0.785268
+Time to reduce Hv: 0.275675
+2
+Time to bcast Hv: 0.016961
+Time to forward Hv: 0.008397
+Time to back Hv: 0.007789
+Time to back2 Hv: 0.790696
+Time to forward Hv: 0.040768
+Time to back Hv: 0.008049
+Time to back2 Hv: 0.792070
+Time to forward Hv: 0.038456
+Time to back Hv: 0.007852
+Time to back2 Hv: 0.794411
+Time to forward Hv: 0.038452
+Time to back Hv: 0.008225
+Time to back2 Hv: 0.792126
+Time to forward Hv: 0.038686
+Time to back Hv: 0.007887
+Time to back2 Hv: 0.794963
+Time to forward Hv: 0.038731
+Time to back Hv: 0.015998
+Time to back2 Hv: 0.789224
+Time to forward Hv: 0.038677
+Time to back Hv: 0.007665
+Time to back2 Hv: 0.793853
+Time to reduce Hv: 0.267444
+3
+Time to bcast Hv: 0.016714
+Time to forward Hv: 0.007972
+Time to back Hv: 0.007690
+Time to back2 Hv: 0.791851
+Time to forward Hv: 0.040827
+Time to back Hv: 0.007737
+Time to back2 Hv: 0.794204
+Time to forward Hv: 0.038587
+Time to back Hv: 0.007626
+Time to back2 Hv: 0.796283
+Time to forward Hv: 0.039696
+Time to back Hv: 0.008669
+Time to back2 Hv: 0.794077
+Time to forward Hv: 0.038834
+Time to back Hv: 0.007534
+Time to back2 Hv: 0.794290
+Time to forward Hv: 0.038772
+Time to back Hv: 0.007841
+Time to back2 Hv: 0.794053
+Time to forward Hv: 0.039083
+Time to back Hv: 0.007450
+Time to back2 Hv: 0.796188
+Time to reduce Hv: 0.282241
+4
+Time to bcast Hv: 0.018141
+Time to forward Hv: 0.008601
+Time to back Hv: 0.007977
+Time to back2 Hv: 0.793539
+Time to forward Hv: 0.040805
+Time to back Hv: 0.007953
+Time to back2 Hv: 0.795020
+Time to forward Hv: 0.038814
+Time to back Hv: 0.007968
+Time to back2 Hv: 0.795534
+Time to forward Hv: 0.038570
+Time to back Hv: 0.007989
+Time to back2 Hv: 0.795691
+Time to forward Hv: 0.038689
+Time to back Hv: 0.008015
+Time to back2 Hv: 0.796760
+Time to forward Hv: 0.038991
+Time to back Hv: 0.007897
+Time to back2 Hv: 0.797210
+Time to forward Hv: 0.039297
+Time to back Hv: 0.008139
+Time to back2 Hv: 0.795890
+Time to reduce Hv: 0.276610
+5
+Time to bcast Hv: 0.017979
+Time to forward Hv: 0.007905
+Time to back Hv: 0.007929
+Time to back2 Hv: 0.794204
+Time to forward Hv: 0.040677
+Time to back Hv: 0.008038
+Time to back2 Hv: 0.797512
+Time to forward Hv: 0.038696
+Time to back Hv: 0.007699
+Time to back2 Hv: 0.796631
+Time to forward Hv: 0.038646
+Time to back Hv: 0.007921
+Time to back2 Hv: 0.797676
+Time to forward Hv: 0.038709
+Time to back Hv: 0.007908
+Time to back2 Hv: 0.797794
+Time to forward Hv: 0.038728
+Time to back Hv: 0.008615
+Time to back2 Hv: 0.796832
+Time to forward Hv: 0.038938
+Time to back Hv: 0.007722
+Time to back2 Hv: 0.799839
+Time to reduce Hv: 0.268389
+6
+Time to bcast Hv: 0.016951
+Time to forward Hv: 0.008585
+Time to back Hv: 0.007736
+Time to back2 Hv: 0.787382
+Time to forward Hv: 0.040976
+Time to back Hv: 0.008137
+Time to back2 Hv: 0.792628
+Time to forward Hv: 0.038601
+Time to back Hv: 0.008097
+Time to back2 Hv: 0.794579
+Time to forward Hv: 0.038478
+Time to back Hv: 0.008212
+Time to back2 Hv: 0.791799
+Time to forward Hv: 0.038559
+Time to back Hv: 0.008122
+Time to back2 Hv: 0.794096
+Time to forward Hv: 0.038802
+Time to back Hv: 0.007981
+Time to back2 Hv: 0.791800
+Time to forward Hv: 0.038977
+Time to back Hv: 0.007620
+Time to back2 Hv: 0.792827
+Time to reduce Hv: 0.280611
+7
+Time to bcast Hv: 0.016744
+Time to forward Hv: 0.008625
+Time to back Hv: 0.008019
+Time to back2 Hv: 0.791137
+Time to forward Hv: 0.041170
+Time to back Hv: 0.008000
+Time to back2 Hv: 0.793499
+Time to forward Hv: 0.038723
+Time to back Hv: 0.008154
+Time to back2 Hv: 0.791385
+Time to forward Hv: 0.038755
+Time to back Hv: 0.007902
+Time to back2 Hv: 0.794670
+Time to forward Hv: 0.039002
+Time to back Hv: 0.007774
+Time to back2 Hv: 0.793270
+Time to forward Hv: 0.038916
+Time to back Hv: 0.007765
+Time to back2 Hv: 0.790983
+Time to forward Hv: 0.038929
+Time to back Hv: 0.007460
+Time to back2 Hv: 0.790874
+Time to reduce Hv: 0.270126
+8
+Time to bcast Hv: 0.016215
+Time to forward Hv: 0.007894
+Time to back Hv: 0.007830
+Time to back2 Hv: 0.787812
+Time to forward Hv: 0.041198
+Time to back Hv: 0.008179
+Time to back2 Hv: 0.793048
+Time to forward Hv: 0.038789
+Time to back Hv: 0.007790
+Time to back2 Hv: 0.794400
+Time to forward Hv: 0.039067
+Time to back Hv: 0.008193
+Time to back2 Hv: 0.793184
+Time to forward Hv: 0.039021
+Time to back Hv: 0.007915
+Time to back2 Hv: 0.793277
+Time to forward Hv: 0.038955
+Time to back Hv: 0.008188
+Time to back2 Hv: 0.798256
+Time to forward Hv: 0.039495
+Time to back Hv: 0.008013
+Time to back2 Hv: 0.798615
+Time to reduce Hv: 0.296415
+9
+Time to bcast Hv: 0.017288
+Time to forward Hv: 0.008730
+Time to back Hv: 0.007700
+Time to back2 Hv: 0.797448
+Time to forward Hv: 0.040689
+Time to back Hv: 0.007919
+Time to back2 Hv: 0.802362
+Time to forward Hv: 0.038653
+Time to back Hv: 0.010509
+Time to back2 Hv: 0.799143
+Time to forward Hv: 0.039109
+Time to back Hv: 0.007925
+Time to back2 Hv: 0.801521
+Time to forward Hv: 0.038904
+Time to back Hv: 0.007921
+Time to back2 Hv: 0.801072
+Time to forward Hv: 0.038848
+Time to back Hv: 0.007999
+Time to back2 Hv: 0.800134
+Time to forward Hv: 0.039064
+Time to back Hv: 0.007846
+Time to back2 Hv: 0.797687
+Time to reduce Hv: 0.263068
+10
+Time to bcast Hv: 0.019284
+Time to forward Hv: 0.008690
+Time to back Hv: 0.007881
+Time to back2 Hv: 0.795399
+Time to forward Hv: 0.040994
+Time to back Hv: 0.008314
+Time to back2 Hv: 0.798215
+Time to forward Hv: 0.038495
+Time to back Hv: 0.008181
+Time to back2 Hv: 0.797458
+Time to forward Hv: 0.039776
+Time to back Hv: 0.008260
+Time to back2 Hv: 0.797566
+Time to forward Hv: 0.038757
+Time to back Hv: 0.008291
+Time to back2 Hv: 0.798330
+Time to forward Hv: 0.039118
+Time to back Hv: 0.008434
+Time to back2 Hv: 0.795477
+Time to forward Hv: 0.038826
+Time to back Hv: 0.008045
+Time to back2 Hv: 0.797972
+Time to reduce Hv: 0.315753
+11
+Time to bcast Hv: 0.017466
+Time to forward Hv: 0.008368
+Time to back Hv: 0.010741
+Time to back2 Hv: 0.789949
+Time to forward Hv: 0.040783
+Time to back Hv: 0.008434
+Time to back2 Hv: 0.799292
+Time to forward Hv: 0.038841
+Time to back Hv: 0.007894
+Time to back2 Hv: 0.798776
+Time to forward Hv: 0.038632
+Time to back Hv: 0.008091
+Time to back2 Hv: 0.798244
+Time to forward Hv: 0.038839
+Time to back Hv: 0.008030
+Time to back2 Hv: 0.801038
+Time to forward Hv: 0.039850
+Time to back Hv: 0.008346
+Time to back2 Hv: 0.803764
+Time to forward Hv: 0.039231
+Time to back Hv: 0.007931
+Time to back2 Hv: 0.802560
+Time to reduce Hv: 0.292383
+12
+Time to bcast Hv: 0.016830
+Time to forward Hv: 0.008751
+Time to back Hv: 0.008031
+Time to back2 Hv: 0.798581
+Time to forward Hv: 0.040963
+Time to back Hv: 0.007725
+Time to back2 Hv: 0.799961
+Time to forward Hv: 0.038912
+Time to back Hv: 0.008061
+Time to back2 Hv: 0.802510
+Time to forward Hv: 0.038837
+Time to back Hv: 0.008267
+Time to back2 Hv: 0.796638
+Time to forward Hv: 0.039237
+Time to back Hv: 0.008331
+Time to back2 Hv: 0.797692
+Time to forward Hv: 0.038867
+Time to back Hv: 0.008330
+Time to back2 Hv: 0.798243
+Time to forward Hv: 0.039021
+Time to back Hv: 0.007911
+Time to back2 Hv: 0.797397
+Time to reduce Hv: 0.2987660
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+
+Time to total Hv: 91.215540
+1677.4697829026443
+Time to compute trace: 92.866224
