@@ -45,16 +45,18 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
         model.zero_grad()
         tmp_num_data = inputs.size(0)
             
+        inputs, targets = inputs.to(device), targets.to(device)
         if rank == 0: 
             for_start = time.time()
 
-        outputs = model(inputs.to(device))
-        loss = criterion(outputs, targets.to(device))
+        outputs = model(inputs)
         
         if rank == 0:
             for_end = time.time()
             print("Time to forward Hv: %f" % (for_end - for_start))    
-
+            
+        loss = criterion(outputs, targets)
+            
         if rank == 0: 
             back_start = time.time()
 
@@ -66,10 +68,11 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
             print("Time to back Hv: %f" % (back_end - back_start))    
         
         
+        params, gradsH = get_params_grad(model)
+        
         if rank == 0: 
             back2_start = time.time()
         
-        params, gradsH = get_params_grad(model)
         # model.zero_grad()
         Hv = torch.autograd.grad(gradsH,
                                  params,
