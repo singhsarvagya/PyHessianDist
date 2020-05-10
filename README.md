@@ -40,7 +40,7 @@ optional arguments:
 
 After the model checkpoint is saved, we can run the following code to get the top eigenvalue, trace, and the Eigenvalue Spectral Density of Hessian:
 ```
-export CUDA_VISIBLE_DEVICES=0; python example_pyhessian_analysis.py [--mini-hessian-batch-size] [--hessian-batch-size] [--seed] [--batch-norm] [--residual] [--cuda] [--resume]
+export CUDA_VISIBLE_DEVICES=0; python example_pyhessian_analysis.py [--mini-hessian-batch-size] [--hessian-batch-size] [--seed] [--batch-norm] [--residual] [--cuda] [--resume] [--eigenvalue] [--trace] [--denisty] [--ip] [--device_count]
 required arguments: 
 --resume                    resume path of the checkpoint
 --ip                        ip address of the machine to set up communication backend for distributed computation
