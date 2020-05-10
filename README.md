@@ -6,11 +6,17 @@ PyHessian is a pytorch library for Hessian based analysis of neural network mode
 
 ![Block](misc/resnet38.png)
 
+However, PyHessian library currently uses PyTorch's DataParallel for distributed memory computation which is 
+inefficient due to high communication latency and lack of parallelization. The performance of this
+implementation doesn't scales up. Hence, we provide PyHessianDist as an alternative for efficient distributed
+memory computation. 
+
+![Block](misc/eigen.png) ![Block](misc/trace.png) ![Block](misc/esd.png)  
 
 ## Usage
 Please first clone the PyHessian library to your local system:
 ```
-git clone https://github.com/amirgholami/PyHessian.git
+git clone https://github.com/singhsarvagya/PyHessianDist.git
 ```
 
 Before running the Hessian code, we need a (pre-trained) NN model. Here, we provide a training file to train ResNet20 model on Cifar-10 dataset:
@@ -35,6 +41,10 @@ optional arguments:
 After the model checkpoint is saved, we can run the following code to get the top eigenvalue, trace, and the Eigenvalue Spectral Density of Hessian:
 ```
 export CUDA_VISIBLE_DEVICES=0; python example_pyhessian_analysis.py [--mini-hessian-batch-size] [--hessian-batch-size] [--seed] [--batch-norm] [--residual] [--cuda] [--resume]
+required arguments: 
+--resume                    resume path of the checkpoint
+--ip                        ip address of the machine to set up communication backend for distributed computation
+--device_count              number of available GPUs 
 
 optional arguments:
 --mini-hessian-batch-size   mini hessian batch size (default: 200)
@@ -43,14 +53,29 @@ optional arguments:
 --batch-norm                do we need batch norm in ResNet or not (default: True)
 --residual                  do we need residual connection or not (default: True)
 --cuda                      do we use gpu or not (default: True)
---resume                    resume path of the checkpoint (default: none, must be filled by user)
+--eigenvalue                to calculate top eigenvalue of the hessian 
+--trace                     to calculate trace of the hessian 
+--density                   to calculate esd of the hessian 
 ```
 
 The output density plot is saved as example.pdf 
 
-## Citation
-PyHessian has been developed as part of the following paper. We appreciate it if you would please cite the following paper if you found the library useful for your work:
+## Citing this work
 
+If you find this repo useful and would like to cite it in a publication, here is a BibTeX entry:
+
+```
+@misc{pyhessian-dist,
+    author       = {Sarvagya Vatsal Singh and Purva Gupta},
+    title        = {PyHessianDist: PyHessian alternative for efficient distributed memory computation},
+    month        = may,
+    year         = 2020,
+    version      = {1.0},
+    url          = {https://github.com/singhsarvagya/PyHessianDist.git}
+    }
+```
+
+## References 
 * Z. Yao, A. Gholami, K Keutzer, M. Mahoney. PyHessian:  Neural Networks Through the Lens of the Hessian, under review [PDF](https://arxiv.org/pdf/1912.07145.pdf).
 
 

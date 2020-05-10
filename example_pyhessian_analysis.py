@@ -10,6 +10,7 @@ from utils import *
 from models.resnet import resnet
 from pyhessian import *
 import torch.nn as nn
+from density_plot import get_esd_plot
 
 
 # Settings
@@ -21,12 +22,15 @@ parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1
 parser.add_argument('--batch-norm', action='store_false', help='do we need batch norm or not')
 parser.add_argument('--residual', action='store_false', help='do we need residual connect or not')
 parser.add_argument('--cuda', action='store_false', help='do we use gpu or not')
-parser.add_argument('--resume', type=str, default='', help='get the checkpoint')
+parser.add_argument('--resume', type=str, required=True, help='get the checkpoint')
 
 # eigen info
-parser.add_argument('--eigenvalue', dest='eigenvalue', action='store_true')  # default false
-parser.add_argument('--trace', dest='trace', action='store_true')  # default false
-parser.add_argument('--density', dest='density', action='store_true')  # default false
+parser.add_argument('--eigenvalue', dest='eigenvalue', action='store_true',
+                    help="to calculate top eigenvalue of the hessian")  # default false
+parser.add_argument('--trace', dest='trace', action='store_true',
+                    help='to calculate trace of the hessian')  # default false
+parser.add_argument('--density', dest='density', action='store_true',
+                    help='to calculate esd of the hessian')  # default false
 parser.set_defaults(eigenvalue=False)
 parser.set_defaults(trace=False)
 parser.set_defaults(density=False)
@@ -61,6 +65,8 @@ for i, (inputs, labels) in enumerate(train_loader):
     if i == batch_num - 1:
         break
 
+
+# TODO add the assert
 # dividing dataset into partitions
 if len(hessian_dataloader) % args.device_count == 0:
     size = [len(hessian_dataloader) // args.device_count] * args.device_count
@@ -69,10 +75,8 @@ else:
     for i in range(0, args.device_count):
         if i < len(hessian_dataloader) % args.device_count:
             size[i] += 1
-print (size)
-# exit(0)
-# partitioning data into number of GPUs available
 
+# partitioning data into number of GPUs available
 data_partitions = DataPartitioner(hessian_dataloader, size)
 
 # get model
@@ -99,23 +103,26 @@ for key in state_dict.keys():
     state_dict_[new_key] = state_dict[key]
 model.load_state_dict(state_dict_)
 
+######################################################
+# Begin the computation
+######################################################
+
 if __name__ == "__main__":
     if args.eigenvalue:
         start = time.time()
-        eigenvalues = eigenvalue(args.device_count, model, data_partitions, criterion, args.ip)
-        print(eigenvalues)
+        top_eigenvalues = eigenvalue(args.device_count, model, data_partitions, criterion, args.ip)
         end = time.time()
+        print('\n***Top Eigenvalues: ', top_eigenvalues)
         print("Time to compute top eigenvalue: %f" % (end - start))
     if args.trace:
         start = time.time()
         trace = trace(args.device_count, model, data_partitions, criterion, args.ip)
-        print(trace)
         end = time.time()
+        print('\n***Trace: ', trace)
         print("Time to compute trace: %f" % (end - start))
     if args.density:
         start = time.time()
-        eigen_list, weight_list = density(args.device_count, model, data_partitions, criterion, args.ip)
-        print(eigen_list)
-        print(weight_list)
+        density_eigen, density_weight = density(args.device_count, model, data_partitions, criterion, args.ip)
         end = time.time()
+        get_esd_plot(density_eigen, density_weight)
         print("Time to compute trace: %f" % (end - start))

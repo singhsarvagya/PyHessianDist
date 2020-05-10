@@ -18,14 +18,9 @@
 # along with PyHessian.  If not, see <http://www.gnu.org/licenses/>.
 #*
 
-import torch
 import numpy as np
-from typing import List, Callable
-import torch.nn as nn
-import torch.distributed as dist
-from torch.multiprocessing import Process, Queue
-from pyhessian.utils import group_product, group_add, normalization, get_params_grad, DataPartitioner,\
-    orthnormal, init_process
+from torch.multiprocessing import Process
+from pyhessian.utils import *
 
 
 def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
@@ -47,7 +42,6 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
         loss = criterion(outputs, targets.to(device))
         loss.backward(create_graph=True)
         params, gradsH = get_params_grad(model)
-        # model.zero_grad()
         Hv = torch.autograd.grad(gradsH,
                                  params,
                                  grad_outputs=v,
@@ -127,13 +121,13 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
         eigenvalues.append(eigenvalue)
         computed_dim += 1
 
-    # communicating eigenvalues and eigenvectors to parent process
+    # communicating eigenvalues to parent process
     if rank == 0:
         queue.put(eigenvalues)
 
 
 def eigenvalue(size: int, model: nn.Module, data_partitions: DataPartitioner,
-                criterion: Callable, ip: str):
+               criterion: Callable, ip: str):
     processes = []
     queue = Queue()
     for rank in range(size):
