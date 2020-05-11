@@ -118,4 +118,4 @@ if __name__ == "__main__":
         density_eigen, density_weight = density(args.device_count, model, data_partitions, criterion, args.ip)
         end = time.time()
         get_esd_plot(density_eigen, density_weight)
-        print("Time to compute trace: %f" % (end - start))
+        print("Time to compute esd: %f" % (end - start))

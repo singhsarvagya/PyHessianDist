@@ -66,13 +66,13 @@ If you find this repo useful and would like to cite it in a publication, here is
 
 ```
 @misc{pyhessian-dist,
-    author       = {Sarvagya Vatsal Singh and Purva Gupta},
-    title        = {PyHessianDist: PyHessian alternative for efficient distributed memory computation},
-    month        = may,
-    year         = 2020,
-    version      = {1.0},
-    url          = {https://github.com/singhsarvagya/PyHessianDist.git}
-    }
+  author = {Sarvagya Vatsal Singh and Purva Gupta},
+  title = {PyHessianDist: PyHessian alternative for efficient distributed memory computation},
+  year = {2020},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/singhsarvagya/PyHessianDist.git}}
+}
 ```
 
 ## References 
