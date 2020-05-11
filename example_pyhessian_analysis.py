@@ -65,16 +65,9 @@ for i, (inputs, labels) in enumerate(train_loader):
     if i == batch_num - 1:
         break
 
-
-# TODO add the assert
 # dividing dataset into partitions
-if len(hessian_dataloader) % args.device_count == 0:
-    size = [len(hessian_dataloader) // args.device_count] * args.device_count
-else:
-    size = [len(hessian_dataloader) // args.device_count] * args.device_count
-    for i in range(0, args.device_count):
-        if i < len(hessian_dataloader) % args.device_count:
-            size[i] += 1
+assert len(hessian_dataloader) % args.device_count == 0, "Mini-batches must be uniformly divided among GPUs"
+size = [len(hessian_dataloader) // args.device_count] * args.device_count
 
 # partitioning data into number of GPUs available
 data_partitions = DataPartitioner(hessian_dataloader, size)
