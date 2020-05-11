@@ -38,8 +38,10 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
     for inputs, targets in data:
         model.zero_grad()
         tmp_num_data = inputs.size(0)
-        outputs = model(inputs.to(device))
-        loss = criterion(outputs, targets.to(device))
+            
+        inputs, targets = inputs.to(device), targets.to(device)
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
         loss.backward(create_graph=True)
         params, gradsH = get_params_grad(model)
         Hv = torch.autograd.grad(gradsH,
@@ -66,6 +68,7 @@ def hv_product(rank: int, size: int, model: nn.Module, data: List[torch.Tensor],
 
     temp_hv = [temp_hv1 / float(size * num_data) for temp_hv1 in temp_hv]
     eigenvalue = group_product(temp_hv, v).cpu().item()
+
     return eigenvalue, temp_hv
 
 
@@ -102,8 +105,8 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
         # not set
         for t in v:
             dist.broadcast(t, src=0, group=group)
-
         for i in range(max_iter):
+            print (i)
             v = orthnormal(v, eigenvectors)
 
             tmp_eigenvalue, Hv = hv_product(rank, size, model, data, criterion, v)
@@ -117,7 +120,7 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
                     break
                 else:
                     eigenvalue = tmp_eigenvalue
-
+    
         eigenvalues.append(eigenvalue)
         computed_dim += 1
 
