@@ -106,7 +106,6 @@ def eigenvalue_(rank: int, size: int, model: nn.Module, data: List[torch.Tensor]
         for t in v:
             dist.broadcast(t, src=0, group=group)
         for i in range(max_iter):
-            print (i)
             v = orthnormal(v, eigenvectors)
 
             tmp_eigenvalue, Hv = hv_product(rank, size, model, data, criterion, v)
